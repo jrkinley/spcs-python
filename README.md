@@ -228,8 +228,6 @@ DESCRIBE COMPUTE POOL imf_compute_pool;
 ### Step 4: Build and Push Container
 
 ```bash
-cd /Users/jkinley/code/spcs-python
-
 # Build for linux/amd64 (required for SPCS)
 docker build --platform linux/amd64 -t imf_datamapper_api_spcs:latest .
 
