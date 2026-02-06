@@ -21,6 +21,10 @@ This project demonstrates two deployment options for loading IMF World Economic 
 
 ## Option 1: Stored Procedure Deployment
 
+> **Recommended: Use Cortex Code CLI**
+> 
+> The easiest way to deploy this stored procedure is using [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli), Snowflake's AI-powered CLI assistant. Simply tell Cortex what you want to deploy and it will handle creating the network rules, external access integrations, stages, and stored procedures for you automatically.
+
 ### Prerequisites
 
 - Snowflake account with ACCOUNTADMIN or equivalent privileges
