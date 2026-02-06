@@ -6,15 +6,15 @@ Snowpark Container Services and Stored Procedure examples for consuming IMF Data
 
 This project demonstrates two deployment options for loading IMF World Economic Outlook (WEO) data into Snowflake:
 
-1. **Stored Procedure** (`imf_datamapper_api_proc.py`) - Simple deployment using Cortex Code CLI
-2. **Container Service** (`imf_datamapper_api_proccs.py`) - Full SPCS deployment with multiple output options
+1. **Stored Procedure** (`imf_datamapper_api_proc.py`) - Simple deployment using Snowflake stored procedures
+2. **Container Service** (`imf_datamapper_api_spcs.py`) - Full SPCS deployment with multiple output options
 
 ## Files
 
 | File | Description |
 |------|-------------|
 | `imf_datamapper_api_proc.py` | Stored procedure version (uses write_pandas) |
-| `imf_datamapper_api_proccs.py` | Full SPCS version with streaming support |
+| `imf_datamapper_api_spcs.py` | Full SPCS version with streaming support |
 | `Dockerfile` | Container image for SPCS |
 | `spec.yaml` | SPCS service specification |
 | `build.sh` | Script to build and tag Docker image |
@@ -196,5 +196,5 @@ uv venv
 uv pip install -r requirements.txt
 
 # Run locally (print mode)
-uv run python imf_datamapper_api_proccs.py
+uv run python imf_datamapper_api_spcs.py
 ```
