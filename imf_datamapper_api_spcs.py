@@ -13,12 +13,13 @@ from snowflake.snowpark import Session
 
 BASE_URL = "https://www.imf.org/external/datamapper/api/v1"
 DATASET = "WEO"
-TIMEOUT_SECONDS = 30
+TIMEOUT_SECONDS = 120
 
 SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
 SNOWFLAKE_HOST = os.getenv("SNOWFLAKE_HOST")
 SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE", "API_DEMO")
 SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC")
+SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
 TABLE_NAME = os.getenv("TABLE_NAME", "IMF_DATAMAPPER_INDICATORS")
 
 
@@ -34,7 +35,8 @@ def get_snowpark_session():
         "authenticator": "oauth",
         "token": get_login_token(),
         "database": SNOWFLAKE_DATABASE,
-        "schema": SNOWFLAKE_SCHEMA
+        "schema": SNOWFLAKE_SCHEMA,
+        "warehouse": SNOWFLAKE_WAREHOUSE
     }).create()
 
 
