@@ -6,15 +6,15 @@ Snowpark Container Services and Stored Procedure examples for consuming IMF Data
 
 This project demonstrates two deployment options for loading IMF World Economic Outlook (WEO) data into Snowflake:
 
-1. **Stored Procedure** (`imf_datamapper_api_sp.py`) - Simple deployment using Cortex Code CLI
-2. **Container Service** (`imf_datamapper_api_spcs.py`) - Full SPCS deployment with multiple output options
+1. **Stored Procedure** (`imf_datamapper_api_proc.py`) - Simple deployment using Cortex Code CLI
+2. **Container Service** (`imf_datamapper_api_proccs.py`) - Full SPCS deployment with multiple output options
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `imf_datamapper_api_sp.py` | Stored procedure version (uses write_pandas) |
-| `imf_datamapper_api_spcs.py` | Full SPCS version with streaming support |
+| `imf_datamapper_api_proc.py` | Stored procedure version (uses write_pandas) |
+| `imf_datamapper_api_proccs.py` | Full SPCS version with streaming support |
 | `Dockerfile` | Container image for SPCS |
 | `spec.yaml` | SPCS service specification |
 | `build.sh` | Script to build and tag Docker image |
@@ -71,7 +71,7 @@ CREATE OR REPLACE STAGE API_DEMO.PUBLIC.PYTHON_CODE
 Upload the Python file using Snowflake CLI:
 
 ```bash
-snow stage copy imf_datamapper_api_sp.py @API_DEMO.PUBLIC.PYTHON_CODE
+snow stage copy imf_datamapper_api_proc.py @API_DEMO.PUBLIC.PYTHON_CODE
 ```
 
 Verify the upload:
@@ -90,8 +90,8 @@ RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
 PACKAGES = ('snowflake-snowpark-python', 'requests', 'pandas')
-IMPORTS = ('@API_DEMO.PUBLIC.PYTHON_CODE/imf_datamapper_api_sp.py')
-HANDLER = 'imf_datamapper_api_sp.main'
+IMPORTS = ('@API_DEMO.PUBLIC.PYTHON_CODE/imf_datamapper_api_proc.py')
+HANDLER = 'imf_datamapper_api_proc.main'
 EXTERNAL_ACCESS_INTEGRATIONS = (IMF_API_ACCESS)
 EXECUTE AS CALLER;
 ```
@@ -102,8 +102,8 @@ EXECUTE AS CALLER;
 |---------|-------|---------|
 | `RUNTIME_VERSION` | 3.11 | Python version |
 | `PACKAGES` | snowflake-snowpark-python, requests, pandas | Required dependencies |
-| `IMPORTS` | @API_DEMO.PUBLIC.PYTHON_CODE/imf_datamapper_api_sp.py | References Python file on stage |
-| `HANDLER` | imf_datamapper_api_sp.main | Module.function format for imported files |
+| `IMPORTS` | @API_DEMO.PUBLIC.PYTHON_CODE/imf_datamapper_api_proc.py | References Python file on stage |
+| `HANDLER` | imf_datamapper_api_proc.main | Module.function format for imported files |
 | `EXTERNAL_ACCESS_INTEGRATIONS` | IMF_API_ACCESS | Allows outbound API calls |
 | `EXECUTE AS CALLER` | - | Uses caller's permissions for table access |
 
@@ -112,7 +112,7 @@ EXECUTE AS CALLER;
 To update the stored procedure code, simply re-upload the Python file to the stage:
 
 ```bash
-snow stage copy imf_datamapper_api_sp.py @API_DEMO.PUBLIC.PYTHON_CODE --overwrite
+snow stage copy imf_datamapper_api_proc.py @API_DEMO.PUBLIC.PYTHON_CODE --overwrite
 ```
 
 Then recreate the procedure (the CREATE OR REPLACE statement remains the same):
@@ -123,8 +123,8 @@ RETURNS STRING
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.11'
 PACKAGES = ('snowflake-snowpark-python', 'requests', 'pandas')
-IMPORTS = ('@API_DEMO.PUBLIC.PYTHON_CODE/imf_datamapper_api_sp.py')
-HANDLER = 'imf_datamapper_api_sp.main'
+IMPORTS = ('@API_DEMO.PUBLIC.PYTHON_CODE/imf_datamapper_api_proc.py')
+HANDLER = 'imf_datamapper_api_proc.main'
 EXTERNAL_ACCESS_INTEGRATIONS = (IMF_API_ACCESS)
 EXECUTE AS CALLER;
 ```
@@ -196,5 +196,5 @@ uv venv
 uv pip install -r requirements.txt
 
 # Run locally (print mode)
-uv run python imf_datamapper_api_spcs.py
+uv run python imf_datamapper_api_proccs.py
 ```
