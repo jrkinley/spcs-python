@@ -7,14 +7,14 @@ Snowpark Container Services and Stored Procedure examples for consuming IMF Data
 This project demonstrates two deployment options for loading IMF World Economic Outlook (WEO) data into Snowflake:
 
 1. **Stored Procedure** (`imf_datamapper_api_proc.py`) - Simple deployment using Snowflake stored procedures
-2. **Container Service** (`imf_datamapper_api_spcs.py`) - Full SPCS deployment with multiple output options
+2. **Container Service** (`imf_datamapper_api_spcs.py`) - SPCS deployment as batch job or continuous service
 
 ## Files
 
 | File | Description |
 |------|-------------|
 | `imf_datamapper_api_proc.py` | Stored procedure version (uses write_pandas) |
-| `imf_datamapper_api_spcs.py` | Full SPCS version with streaming support |
+| `imf_datamapper_api_spcs.py` | SPCS container version (uses write_pandas) |
 | `Dockerfile` | Container image for SPCS |
 | `spec.yaml` | SPCS service specification |
 | `build.sh` | Script to build and tag Docker image |
@@ -169,17 +169,138 @@ DROP TABLE IF EXISTS API_DEMO.PUBLIC.IMF_DATAMAPPER_INDICATORS;
 
 ## Option 2: SPCS Container Deployment
 
-### Build and Push Container
+### Service Types
+
+| Type | Lifespan | Restart | Use Case | Billing |
+|------|----------|---------|----------|---------|
+| `EXECUTE JOB SERVICE` | Runs until containers exit | No restart | Batch jobs, ETL | Only while running |
+| `CREATE SERVICE` | Runs continuously until stopped | Auto-restarts | Web apps, APIs | Continuous |
+
+This example uses `EXECUTE JOB SERVICE` for a batch data refresh job.
+
+### Step 1: Check External Access Integration
+
+If you completed Option 1, the network rule and EAI already exist. Verify:
+
+```sql
+SHOW EXTERNAL ACCESS INTEGRATIONS LIKE 'IMF_API_ACCESS';
+```
+
+If it doesn't exist, create it:
+
+```sql
+CREATE OR REPLACE NETWORK RULE API_DEMO.PUBLIC.IMF_API_NETWORK_RULE
+  MODE = EGRESS
+  TYPE = HOST_PORT
+  VALUE_LIST = ('www.imf.org:443');
+
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION IMF_API_ACCESS
+  ALLOWED_NETWORK_RULES = (API_DEMO.PUBLIC.IMF_API_NETWORK_RULE)
+  ENABLED = TRUE;
+```
+
+### Step 2: Create Image Repository
+
+```sql
+USE DATABASE API_DEMO;
+USE SCHEMA PUBLIC;
+
+CREATE IMAGE REPOSITORY IF NOT EXISTS imf_images;
+
+-- Get the repository URL
+SHOW IMAGE REPOSITORIES LIKE 'imf_images';
+```
+
+Note the `repository_url` from the output (e.g., `<org>-<account>.registry.snowflakecomputing.com/api_demo/public/imf_images`).
+
+### Step 3: Create Compute Pool
+
+```sql
+CREATE COMPUTE POOL IF NOT EXISTS imf_compute_pool
+  MIN_NODES = 1
+  MAX_NODES = 1
+  INSTANCE_FAMILY = CPU_X64_XS;
+
+-- Wait for ACTIVE status
+DESCRIBE COMPUTE POOL imf_compute_pool;
+```
+
+### Step 4: Build and Push Container
 
 ```bash
-# Update build.sh with your account details
-./build.sh
+cd /Users/jkinley/code/spcs-python
+
+# Build for linux/amd64 (required for SPCS)
+docker build --platform linux/amd64 -t imf_datamapper_api_spcs:latest .
+
+# Tag for Snowflake registry (replace with your repository_url)
+docker tag imf_datamapper_api_spcs:latest <repository_url>/imf_datamapper_api_spcs:latest
 
 # Login to Snowflake registry
-docker login <org>-<account>.registry.snowflakecomputing.com
+docker login <org>-<account>.registry.snowflakecomputing.com -u <username>
 
-# Push the image
-docker push <repo_url>
+# Push image
+docker push <repository_url>/imf_datamapper_api_spcs:latest
+```
+
+### Step 5: Execute Job Service
+
+Run as a one-time batch job:
+
+```sql
+EXECUTE JOB SERVICE
+  IN COMPUTE POOL imf_compute_pool
+  NAME = imf_datamapper_job
+  EXTERNAL_ACCESS_INTEGRATIONS = (IMF_API_ACCESS)
+  FROM SPECIFICATION $$
+  spec:
+    containers:
+    - name: imf-datamapper
+      image: /api_demo/public/imf_images/imf_datamapper_api_spcs:latest
+      env:
+        SNOWFLAKE_DATABASE: API_DEMO
+        SNOWFLAKE_SCHEMA: PUBLIC
+        TABLE_NAME: IMF_DATAMAPPER_INDICATORS
+  $$;
+```
+
+Check job status:
+
+```sql
+CALL SYSTEM$GET_JOB_STATUS('imf_datamapper_job');
+CALL SYSTEM$GET_JOB_LOGS('imf_datamapper_job', 'imf-datamapper');
+```
+
+### Alternative: Continuous Service
+
+For services that need to run continuously (e.g., APIs, web apps):
+
+```sql
+CREATE SERVICE imf_datamapper_service
+  IN COMPUTE POOL imf_compute_pool
+  EXTERNAL_ACCESS_INTEGRATIONS = (IMF_API_ACCESS)
+  FROM SPECIFICATION $$
+  spec:
+    containers:
+    - name: imf-datamapper
+      image: /api_demo/public/imf_images/imf_datamapper_api_spcs:latest
+      env:
+        SNOWFLAKE_DATABASE: API_DEMO
+        SNOWFLAKE_SCHEMA: PUBLIC
+        TABLE_NAME: IMF_DATAMAPPER_INDICATORS
+  $$;
+
+-- Manage the service
+SHOW SERVICES;
+ALTER SERVICE imf_datamapper_service SUSPEND;
+DROP SERVICE imf_datamapper_service;
+```
+
+### Cleanup
+
+```sql
+DROP COMPUTE POOL IF EXISTS imf_compute_pool;
+DROP IMAGE REPOSITORY IF EXISTS imf_images;
 ```
 
 ## Data Source
