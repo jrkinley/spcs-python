@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+IMF DataMapper API - Snowpark Container Services Version
+Fetches World Economic Outlook data from IMF and loads into Snowflake.
+"""
 
 import os
 import sys
@@ -6,7 +10,6 @@ from datetime import datetime, timezone
 import requests
 import pandas as pd
 from snowflake.snowpark import Session
-from snowpipe_streaming import SnowpipeStreamingClient
 
 BASE_URL = "https://www.imf.org/external/datamapper/api/v1"
 DATASET = "WEO"
@@ -14,9 +17,8 @@ TIMEOUT_SECONDS = 30
 
 SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
 SNOWFLAKE_HOST = os.getenv("SNOWFLAKE_HOST")
-SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
-SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
-
+SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE", "API_DEMO")
+SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC")
 TABLE_NAME = "IMF_DATAMAPPER_INDICATORS"
 
 
@@ -39,7 +41,6 @@ def get_snowpark_session():
 def fetch_weo_indicators():
     response = requests.get(f"{BASE_URL}/indicators", timeout=TIMEOUT_SECONDS)
     response.raise_for_status()
-    
     indicators = response.json().get("indicators", {})
     return {
         code: info for code, info in indicators.items()
@@ -53,9 +54,8 @@ def fetch_indicator_data(indicator_code):
     return response.json()
 
 
-def parse_indicator_data(indicator_code, data, ingestion_timestamp):
+def parse_indicator_data(indicator_code, data):
     values = data.get("values", {}).get(indicator_code, {})
-    
     rows = []
     for country, yearly_data in values.items():
         for year, value in yearly_data.items():
@@ -63,76 +63,39 @@ def parse_indicator_data(indicator_code, data, ingestion_timestamp):
                 "INDICATOR": indicator_code,
                 "COUNTRY_CODE": country,
                 "YEAR": int(year),
-                "VALUE": float(value) if value is not None else None,
-                "INGESTION_TIMESTAMP": ingestion_timestamp
+                "VALUE": float(value) if value is not None else None
             })
-    
     return pd.DataFrame(rows)
 
 
-def write_to_snowflake_pandas(session, df):
-    session.write_pandas(
-        df,
-        table_name=TABLE_NAME,
-        auto_create_table=True,
-        overwrite=True
-    )
-
-
-def write_to_snowflake_streaming(df):
-    config = {
-        "account": SNOWFLAKE_ACCOUNT,
-        "host": SNOWFLAKE_HOST,
-        "token": get_login_token(),
-        "token_type": "OAUTH",
-        "database": SNOWFLAKE_DATABASE,
-        "schema": SNOWFLAKE_SCHEMA
-    }
-    
-    client = SnowpipeStreamingClient(config)
-    channel = None
-    
-    try:
-        channel = client.open_channel(f"{TABLE_NAME}_CHANNEL", TABLE_NAME)
-        
-        rows = df.to_dict("records")
-        response = channel.append_rows(rows)
-        
-        if response.has_errors():
-            print(f"Errors: {response.get_errors()}", file=sys.stderr)
-        else:
-            print(f"Streamed {len(rows)} rows")
-    finally:
-        if channel:
-            channel.close()
-        client.close()
-
-
 def main():
-    write_method = os.getenv("WRITE_METHOD", "print")
     ingestion_timestamp = datetime.now(timezone.utc)
     
     try:
+        session = get_snowpark_session()
+        
         weo_indicators = fetch_weo_indicators()
-                
+        
         all_data = []
         for indicator_code in weo_indicators:
             data = fetch_indicator_data(indicator_code)
-            df = parse_indicator_data(indicator_code, data, ingestion_timestamp)
+            df = parse_indicator_data(indicator_code, data)
             all_data.append(df)
         
         combined_df = pd.concat(all_data, ignore_index=True)
+        combined_df["INGESTION_TIMESTAMP"] = ingestion_timestamp
         
-        if write_method == "print":
-            print(combined_df.head())
-        elif write_method == "streaming":
-            write_to_snowflake_streaming(combined_df)
-            print("Data written using streaming method")
-        elif write_method == "pandas":
-            session = get_snowpark_session()
-            write_to_snowflake_pandas(session, combined_df)
-            session.close()
-            print("Data written using pandas method")
+        session.write_pandas(
+            combined_df,
+            table_name=TABLE_NAME,
+            database=SNOWFLAKE_DATABASE,
+            schema=SNOWFLAKE_SCHEMA,
+            auto_create_table=True,
+            overwrite=True
+        )
+        
+        print(f"Loaded {len(combined_df)} rows into {SNOWFLAKE_DATABASE}.{SNOWFLAKE_SCHEMA}.{TABLE_NAME}")
+        session.close()
         
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}", file=sys.stderr)
