@@ -21,3 +21,8 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Credentials
+profile.json
+*.p8
+*.pub

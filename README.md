@@ -23,7 +23,25 @@ This project demonstrates two deployment options for loading IMF World Economic 
 
 > **Recommended: Use Cortex Code CLI**
 > 
-> The easiest way to deploy this stored procedure is using [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli), Snowflake's AI-powered CLI assistant. Simply tell Cortex what you want to deploy and it will handle creating the network rules, external access integrations, stages, and stored procedures for you automatically.
+> The easiest way to deploy is using [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-code), Snowflake's AI-powered CLI assistant. Simply describe what you want and Cortex will handle creating all required objects automatically.
+>
+> **Example Prompts:**
+>
+> *Stored Procedure Deployment:*
+> ```
+> Read the README for deployment details, then deploy imf_datamapper_api_proc.py 
+> as a stored procedure. Create the necessary network rule and external access 
+> integration, upload the code to a stage, and create the procedure. Run it and 
+> verify the data loaded correctly.
+> ```
+>
+> *SPCS Container Deployment:*
+> ```
+> Read the README for deployment details, then deploy imf_datamapper_api_spcs.py 
+> as an SPCS container job. Create the image repository, compute pool, network 
+> rule and external access integration. Build and push the Docker image, execute 
+> the job, and verify the results.
+> ```
 
 ### Prerequisites
 
