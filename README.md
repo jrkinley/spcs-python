@@ -23,7 +23,7 @@ This project demonstrates two deployment options for loading IMF World Economic 
 
 > **Recommended: Use Cortex Code CLI**
 > 
-> The easiest way to deploy is using [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-code), Snowflake's AI-powered CLI assistant. Simply describe what you want and Cortex will handle creating all required objects automatically.
+> The easiest way to deploy is using [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli), Snowflake's AI-powered CLI assistant. Simply describe what you want and Cortex will handle creating all required objects automatically.
 >
 > **Example Prompts:**
 >
