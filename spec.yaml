@@ -1,0 +1,20 @@
+spec:
+  containers:
+    - name: imf-datamapper-api
+      image: /db/schema/image_repo/imf_datamapper_api:latest
+      env:
+        DATASET: WEO
+        SNOWFLAKE_DATABASE: spcs_db
+        SNOWFLAKE_SCHEMA: spcs_schema
+        WRITE_METHOD: pandas
+      resources:
+        requests:
+          memory: 256M
+          cpu: 0.5
+        limits:
+          memory: 512M
+          cpu: 1
+  endpoints:
+    - name: api
+      port: 8000
+      public: false
