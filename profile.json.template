@@ -1,0 +1,7 @@
+{
+  "url": "https://<account_identifier>.snowflakecomputing.com",
+  "account": "<account_identifier>",
+  "user": "<username>",
+  "private_key_file": "rsa_key.p8",
+  "role": "<role>"
+}

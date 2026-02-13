@@ -26,3 +26,4 @@ Thumbs.db
 profile.json
 *.p8
 *.pub
+.env
